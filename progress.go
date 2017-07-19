@@ -30,6 +30,9 @@ type Progress struct {
 	// Bars is the collection of progress bars
 	Bars []*Bar
 
+	// Lines to be printed
+	Lines []fmt.Stringer
+
 	// RefreshInterval in the time duration to wait for refreshing the output
 	RefreshInterval time.Duration
 
@@ -48,6 +51,7 @@ func New() *Progress {
 		Width:           Width,
 		Out:             Out,
 		Bars:            make([]*Bar, 0),
+		Lines:           make([]fmt.Stringer, 0),
 		RefreshInterval: RefreshInterval,
 
 		tdone: make(chan bool),
@@ -56,9 +60,33 @@ func New() *Progress {
 	}
 }
 
+// stringerWrapper is a helper so we can pass a func as an fmt.Stringer
+type stringerWrapper struct {
+	someFunc func() string
+}
+
+func (sw stringerWrapper) String() string {
+	return sw.someFunc()
+}
+
 // AddBar creates a new progress bar and adds it to the default progress container
 func AddBar(total int) *Bar {
 	return defaultProgress.AddBar(total)
+}
+
+// AddLine adds a line to be printed to the default progress container
+func AddLine(line fmt.Stringer) {
+	defaultProgress.AddLine(line)
+}
+
+// AddStaticLine adds a static line of text to the default progress container
+func AddStaticLine(text string) {
+	defaultProgress.AddStaticLine(text)
+}
+
+// AddLineFunc adds a function that returns a line to be printed to the default progress container
+func AddLineFunc(lineFunc func() string) {
+	defaultProgress.AddLineFunc(lineFunc)
 }
 
 // Start starts the rendering the progress of progress bars using the DefaultProgress. It listens for updates using `bar.Set(n)` and new bars when added using `AddBar`
@@ -98,7 +126,35 @@ func (p *Progress) AddBar(total int) *Bar {
 	bar := NewBar(total)
 	bar.Width = p.Width
 	p.Bars = append(p.Bars, bar)
+	p.Lines = append(p.Lines, bar)
 	return bar
+}
+
+// AddLine adds a Line to the container
+func (p *Progress) AddLine(line fmt.Stringer) {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+
+	p.Lines = append(p.Lines, line)
+}
+
+// AddStaticLine adds a static line of text to the container
+func (p *Progress) AddStaticLine(text string) {
+	s := stringerWrapper{
+		func() string {
+			return text
+		},
+	}
+	p.AddLine(s)
+}
+
+// AddLineFunc takes a function that returns a string, wraps it in a struct and adds it to the container
+func (p *Progress) AddLineFunc(lineFunc func() string) {
+	s := stringerWrapper{
+		lineFunc,
+	}
+	// s := &temp{}
+	p.AddLine(s)
 }
 
 // Listen listens for updates and renders the progress bars
@@ -123,8 +179,8 @@ func (p *Progress) Listen() {
 func (p *Progress) print() {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
-	for _, bar := range p.Bars {
-		fmt.Fprintln(p.lw, bar.String())
+	for _, line := range p.Lines {
+		fmt.Fprintln(p.lw, line.String())
 	}
 	p.lw.Flush()
 }

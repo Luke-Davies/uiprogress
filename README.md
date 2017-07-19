@@ -1,3 +1,12 @@
+# uiprogress with the ability to add lines of text.
+
+
+TODO:
+- Add test cases
+- Add examples
+
+THe original can be found [here](https://github.com/gosuri/uiprogress) and the untouched README can be seen below.
+
 # uiprogress [![GoDoc](https://godoc.org/github.com/gosuri/uiprogress?status.svg)](https://godoc.org/github.com/gosuri/uiprogress) [![Build Status](https://travis-ci.org/gosuri/uiprogress.svg?branch=master)](https://travis-ci.org/gosuri/uiprogress)
 
 A Go library to render progress bars in terminal applications. It provides a set of flexible features with a customizable API.
